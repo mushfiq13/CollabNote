@@ -1,6 +1,66 @@
 version: "3.9"
 
 services:
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nginx
+    ports:
+      - "80:80" # Expose port 80 to host
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Mount config (read-only)
+    depends_on:
+      - fastapi1
+      - fastapi2
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # FastAPI Instance 1
+  fastapi1:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.12-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install --no-cache-dir -r requirements.txt
+        COPY app/ ./app/
+        CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    container_name: fastapi1
+    env_file:
+      - .env
+    environment:
+      - INSTANCE_ID=FastAPI-1
+    networks:
+      - app-network
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  fastapi2:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.12-slim
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install --no-cache-dir -r requirements.txt
+        COPY app/ ./app/
+        CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    container_name: fastapi2
+    env_file:
+      - .env
+    environment:
+      - INSTANCE_ID=FastAPI-2
+    networks:
+      - app-network
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
   db:
     image: postgres:16
     container_name: lab2_postgres
@@ -12,6 +72,8 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d lab2_db"]
       interval: 5s
@@ -29,6 +91,8 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - app-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
@@ -55,6 +119,8 @@ services:
       - "9300:9300"
     volumes:
       - esdata:/usr/share/elasticsearch/data
+    networks:
+      - app-network
     healthcheck:
       test:
         ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
@@ -72,6 +138,8 @@ services:
     volumes:
       - redisdata:/data
     command: redis-server --appendonly yes
+    networks:
+      - app-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -84,3 +152,7 @@ volumes:
     driver: local
   esdata:
   redisdata:
+
+networks:
+  app-network:
+    driver: bridge

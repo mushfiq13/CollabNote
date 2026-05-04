@@ -1,7 +1,8 @@
 import os
 import time
+import socket
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException, Query, status, Header
+from fastapi import FastAPI, Depends, HTTPException, Query, status, Header, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from bson import ObjectId
@@ -28,6 +29,8 @@ from app.auth import (
 load_dotenv()
 
 ELASTICSEARCH_INDEX = os.getenv("ELASTICSEARCH_INDEX")
+INSTANCE_ID = os.getenv("INSTANCE_ID", "unknown")
+HOSTNAME = socket.gethostname()
 
 # Create FastAPI instance
 app = FastAPI(
@@ -56,6 +59,22 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@app.get("/")
+async def root(request: Request):
+    return {
+        "message": f"Hello from {INSTANCE_ID}!",
+        "instance_id": INSTANCE_ID,
+        "hostname": HOSTNAME,
+        "client_ip": request.headers.get("X-Real-Ip", request.client.host)
+    }
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "instance_id": INSTANCE_ID,
+    }
 
 # Health check endpoint
 @app.get("/ping", status_code=status.HTTP_200_OK)
