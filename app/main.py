@@ -3,6 +3,7 @@ import time
 import socket
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Query, status, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from bson import ObjectId
@@ -37,6 +38,15 @@ app = FastAPI(
     title=os.getenv("APP_NAME", "FastAPI Application"),
     description="A CRUD API for user management with PostgreSQL",
     version="1.0.0"
+)
+
+# Allow any origin for CORS (for testing purposes, adjust in production)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins="*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Startup and shutdown events
