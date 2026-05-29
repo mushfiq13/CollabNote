@@ -126,38 +126,24 @@ class SearchResult(BaseModel):
             }
         }
 
-class ActivityLogCreate(BaseModel):
-    """Input for creating activity logs"""
-    action: str = Field(description="Action performed (e.g., login, profile_update)")
+class LogEvent(BaseModel):
+    """"Schema for activity log events sent to Kafka"""
+    id: Optional[str] = Field(alias="_id", default=None, description="MongoDB document ID")
+    user_id: str = Field(..., min_length=1)
+    action: str = Field(..., min_length=1, description="Action performed (e.g., login, profile_update)")
+    resource: Optional[str] = None
+    details: Optional[dict] = None
+    timestamp: Optional[datetime] = None
     metadata: Optional[dict] = Field(default={}, description="Additional information")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "action": "login",
-                "metadata": {
-                    "ip_address": "192.168.1.1",
-                    "user_agent": "Mozilla/5.0"
-                }
-            }
-        }
-
-class ActivityLogOut(BaseModel):
-    """Output for activity logs (includes MongoDB _id)"""
-    id: str = Field(alias="_id", description="MongoDB document ID")
-    user_id: int
-    action: str
-    timestamp: datetime
-    metadata: dict = {}
-
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
-            "example": {
                 "_id": "507f1f77bcf86cd799439011",
-                "user_id": 1,
-                "action": "login",
-                "timestamp": "2024-12-17T10:30:00Z",
+                "user_id": "user123",
+                "action": "create_note",
+                "resource": "note_abc",
+                "details": {"title": "My Note"},
                 "metadata": {"ip_address": "192.168.1.1"}
             }
         }

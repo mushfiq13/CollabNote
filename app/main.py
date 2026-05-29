@@ -16,8 +16,9 @@ from .elasticsearch import connect_to_elasticsearch, close_elasticsearch_connect
 from .models import User
 from .schemas import Token, UserCreate, UserOut, UserUpdate, \
     NoteCreate, NoteOut, NoteUpdate, SearchResult, \
-    ActivityLogCreate, ActivityLogOut
+    LogEvent
 from .redis_client import connect_to_redis, close_redis_connection, cache_get, cache_set, cache_delete, cache_delete_pattern
+from .kafka_producer import start_kafka_producer, stop_kafka_producer, publish_log, get_topic_name
 from app.auth import (
     hash_password,
     verify_password,
@@ -55,12 +56,14 @@ async def startup_event():
     await connect_to_mongodb()
     await connect_to_elasticsearch()
     await connect_to_redis()
+    await start_kafka_producer()
 
 @app.on_event("shutdown")
 async def shutdown_event():
     await close_mongodb_connection()
     await close_elasticsearch_connection()
     await close_redis_connection()
+    await stop_kafka_producer()
 
 # Dependency: Database Session
 def get_db():
@@ -527,36 +530,39 @@ def delete_user(
 
     return None
 
-@app.post("/logs", response_model=dict, status_code=status.HTTP_201_CREATED)
-async def create_custom_log(
-    log_data: ActivityLogCreate,
+@app.post("/logs", response_model=dict, status_code=status.HTTP_202_ACCEPTED)
+async def create_log(
+    log: LogEvent,
     current_user: User = Depends(get_current_user)
 ):
-    mongodb = get_mongodb()
+    log_data = log.model_dump()
+    if not log_data.get("timestamp"):
+        log_data["timestamp"] = datetime.utcnow().isoformat()
 
-    log_document = {
-        "user_id": current_user.id,
-        "action": log_data.action,
-        "timestamp": datetime.utcnow(),
-        "metadata": log_data.metadata or {}
-    }
+    try:
+        await publish_log(log_data)
+        return {
+            "message": "accepted",
+            "topic": get_topic_name(),
+            "event": log_data
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to publish log event: {str(e)}"
+        )
 
-    result = await mongodb.activity_logs.insert_one(log_document)
-
-    return { "log_id": str(result.inserted_id) }
-
-@app.get("/logs", response_model=list[ActivityLogOut], status_code=status.HTTP_200_OK)
-async def get_my_logs(
+@app.get("/logs", response_model=list[LogEvent], status_code=status.HTTP_200_OK)
+async def get_logs(
     current_user: User = Depends(get_current_user),
     limit: int = 10
 ):
     mongodb = get_mongodb()
 
-    cursor = mongodb.activity_logs.find(
-        {"user_id": current_user.id}
-    ).sort("timestamp", -1).limit(limit)
-
-    logs = await cursor.to_list(length=limit)
+    logs = await mongodb.logs.find() \
+        .sort("timestamp", -1) \
+        .limit(limit) \
+        .to_list(length=limit)
 
     # Convert ObjectId to string for JSON serialization
     for log in logs:
@@ -564,7 +570,7 @@ async def get_my_logs(
 
     return logs
 
-@app.get("/users/{user_id}/logs", response_model=list[ActivityLogOut], status_code=status.HTTP_200_OK)
+@app.get("/users/{user_id}/logs", response_model=list[LogEvent], status_code=status.HTTP_200_OK)
 async def get_user_logs(
     user_id: int,
     admin: User = Depends(require_admin),
@@ -580,7 +586,7 @@ async def get_user_logs(
 
     # Get logs from MongoDB
     mongodb = get_mongodb()
-    cursor = mongodb.activity_logs.find(
+    cursor = mongodb.logs.find(
         {"user_id": user_id}
     ).sort("timestamp", -1).limit(limit)
 
@@ -591,3 +597,21 @@ async def get_user_logs(
         logs["_id"] = str(log["_id"])
 
     return logs
+
+@app.get("/logs/stats")
+async def get_stats():
+    mongodb = get_mongodb()
+
+    total_logs = await mongodb.logs.count_documents({})
+
+    # Count by action type
+    pipeline = [
+        {"$group": {"_id": "$action", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    action_stats = await mongodb.logs.aggregate(pipeline).to_list(length=100)
+
+    return {
+        "total_logs": total_logs,
+        "actions": action_stats
+    }
