@@ -5,10 +5,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv(
+    "KAFKA_BOOTSTRAP_SERVERS",
+    "localhost:9092"
+)
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "activity_logs")
 
 kafka_producer: AIOKafkaProducer = None
+
 
 async def start_kafka_producer():
     global kafka_producer
@@ -20,11 +24,13 @@ async def start_kafka_producer():
     await kafka_producer.start()
     print(f"Kafka producer started: {KAFKA_BOOTSTRAP_SERVERS}")
 
+
 async def stop_kafka_producer():
     global kafka_producer
     if kafka_producer:
         await kafka_producer.stop()
         print("Kafka producer stopped")
+
 
 async def publish_log(log_data: dict):
     global kafka_producer
@@ -37,6 +43,7 @@ async def publish_log(log_data: dict):
     except Exception as e:
         print(f"Failed to publish log to Kafka: {e}")
         raise
+
 
 def get_topic_name():
     return KAFKA_TOPIC

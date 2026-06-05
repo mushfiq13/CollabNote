@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
 
+
 class UserCreate(BaseModel):
     email: EmailStr                          # Validates email format
     username: str = Field(
@@ -19,6 +20,7 @@ class UserCreate(BaseModel):
             }
         }
 
+
 class UserUpdate(BaseModel):
     email: EmailStr | None = None            # Optional email
     username: str | None = Field(
@@ -26,6 +28,7 @@ class UserUpdate(BaseModel):
         min_length=3,
         max_length=50
     )
+
 
 class UserOut(BaseModel):
     id: int
@@ -43,6 +46,7 @@ class UserOut(BaseModel):
             }
         }
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -55,29 +59,43 @@ class Token(BaseModel):
             }
         }
 
+
 class TokenData(BaseModel):
     email: Optional[str] = None
 
+
 class NoteCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200, description="Note title")
+    title: str = Field(
+        ..., min_length=1,
+        max_length=200,
+        description="Note title")
     content: str = Field(..., min_length=1, description="Note content")
-    tags: Optional[list[str]] = Field(default=[], description="Optional tags for categorization")
+    tags: Optional[list[str]] = Field(
+        default=[],
+        description="Optional tags for categorization")
 
     class Config:
         json_schema_extra = {
             "example": {
                 "title": "Learn FastAPI",
-                "content": "FastAPI is a modern web framework for building APIs",
+                "content": "FastAPI is a modern web framework \
+                    for building APIs",
                 "tags": ["python", "fastapi", "tutorial"]
             }
         }
 
+
 class NoteOut(BaseModel):
-    id: str = Field(..., alias="_id", description="Unique identifier (MongoDB ObjectId)")
+    id: str = Field(
+        ...,
+        alias="_id",
+        description="Unique identifier (MongoDB ObjectId)")
     title: str
     content: str
     tags: list[str]
-    created_at: datetime = Field(..., description="Timestamp when note was created")
+    created_at: datetime = Field(
+        ...,
+        description="Timestamp when note was created")
 
     class Config:
         populate_by_name = True
@@ -91,6 +109,7 @@ class NoteOut(BaseModel):
             }
         }
 
+
 class NoteUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     content: Optional[str] = Field(None, min_length=1)
@@ -103,6 +122,7 @@ class NoteUpdate(BaseModel):
                 "tags": ["python", "fastapi", "mongodb"]
             }
         }
+
 
 class SearchResult(BaseModel):
     id: str
@@ -126,15 +146,24 @@ class SearchResult(BaseModel):
             }
         }
 
+
 class LogEvent(BaseModel):
     """"Schema for activity log events sent to Kafka"""
-    id: Optional[str] = Field(alias="_id", default=None, description="MongoDB document ID")
+    id: Optional[str] = Field(
+        alias="_id",
+        default=None,
+        description="MongoDB document ID")
     user_id: str = Field(..., min_length=1)
-    action: str = Field(..., min_length=1, description="Action performed (e.g., login, profile_update)")
+    action: str = Field(
+        ...,
+        min_length=1,
+        description="Action performed (e.g., login, profile_update)")
     resource: Optional[str] = None
     details: Optional[dict] = None
     timestamp: Optional[datetime] = None
-    metadata: Optional[dict] = Field(default={}, description="Additional information")
+    metadata: Optional[dict] = Field(
+        default={},
+        description="Additional information")
 
     class Config:
         json_schema_extra = {

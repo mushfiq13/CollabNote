@@ -2,6 +2,7 @@ from .database import Base
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.sql import func
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -35,8 +36,13 @@ class User(Base):
     role = Column(String(5), nullable=False, server_default="user")
 
     is_active = Column(Boolean, nullable=False, server_default="True")
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now())
 
     def __repr__(self):
         """String representation of User object."""
-        return f"<User(id={self.id}, email='{self.email}', username='{self.username}')>"
+        return f"<User(id={self.id}, \
+            email='{self.email}', \
+            username='{self.username}')>"

@@ -2,23 +2,30 @@ import os
 import time
 import socket
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException, Query, status, Header, Request
+from fastapi import FastAPI, Depends, HTTPException, \
+    Query, status, \
+    Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordRequestForm
+from fastapi.security import HTTPBearer, \
+    HTTPAuthorizationCredentials, \
+    OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from bson import ObjectId
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Optional
 
 from .database import SessionLocal
 from .mongodb import connect_to_mongodb, close_mongodb_connection, get_mongodb
-from .elasticsearch import connect_to_elasticsearch, close_elasticsearch_connection, get_elasticsearch
+from .elasticsearch import connect_to_elasticsearch, \
+    close_elasticsearch_connection, get_elasticsearch
 from .models import User
 from .schemas import Token, UserCreate, UserOut, UserUpdate, \
     NoteCreate, NoteOut, NoteUpdate, SearchResult, \
     LogEvent
-from .redis_client import connect_to_redis, close_redis_connection, cache_get, cache_set, cache_delete, cache_delete_pattern
-from .kafka_producer import start_kafka_producer, stop_kafka_producer, publish_log, get_topic_name
+from .redis_client import connect_to_redis, close_redis_connection, \
+    cache_get, cache_set, cache_delete, cache_delete_pattern
+from .kafka_producer import start_kafka_producer, stop_kafka_producer, \
+    publish_log, get_topic_name
 from app.auth import (
     hash_password,
     verify_password,
@@ -50,6 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Startup and shutdown events
 @app.on_event("startup")
 async def startup_event():
@@ -58,12 +66,14 @@ async def startup_event():
     await connect_to_redis()
     await start_kafka_producer()
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     await close_mongodb_connection()
     await close_elasticsearch_connection()
     await close_redis_connection()
     await stop_kafka_producer()
+
 
 # Dependency: Database Session
 def get_db():
@@ -72,6 +82,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 @app.get("/")
 async def root(request: Request):
@@ -82,6 +93,7 @@ async def root(request: Request):
         "client_ip": request.headers.get("X-Real-Ip", request.client.host)
     }
 
+
 @app.get("/health")
 async def health():
     return {
@@ -89,17 +101,20 @@ async def health():
         "instance_id": INSTANCE_ID,
     }
 
+
 # Health check endpoint
 @app.get("/ping", status_code=status.HTTP_200_OK)
 def ping():
     return {"message": "pong"}
+
 
 # Helper function to convert MongoDB document to response format
 def note_helper(note) -> dict:
     """
     Convert MongoDB document to API response format.
 
-    Converts ObjectId to string and structures data according to NoteResponse schema.
+    Converts ObjectId to string and structures data according
+    to NoteResponse schema.
     """
     return {
         "id": str(note["_id"]),
@@ -109,8 +124,10 @@ def note_helper(note) -> dict:
         "created_at": note["created_at"]
     }
 
+
 # HTTPBearer scheme for token authentication
 security = HTTPBearer()
+
 
 # Dependency: Get current authenticated user
 def get_current_user(
@@ -138,6 +155,7 @@ def get_current_user(
 
     return user
 
+
 def require_admin(current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(
@@ -146,7 +164,12 @@ def require_admin(current_user: User = Depends(get_current_user)):
         )
     return current_user
 
-@app.post("/notes", response_model=NoteOut, status_code=status.HTTP_201_CREATED)
+
+@app.post(
+    "/notes",
+    response_model=NoteOut,
+    status_code=status.HTTP_201_CREATED
+)
 async def create_note(note: NoteCreate):
     mongodb = get_mongodb()
     es = get_elasticsearch()
@@ -174,17 +197,25 @@ async def create_note(note: NoteCreate):
     note_dict["_id"] = str(result.inserted_id)
     return note_dict
 
-@app.get("/notes", response_model=list[NoteOut], status_code=status.HTTP_200_OK)
+
+@app.get(
+    "/notes",
+    response_model=list[NoteOut],
+    status_code=status.HTTP_200_OK)
 async def get_all_notes(limit: int = Query(default=10, le=100)):
     mongodb = get_mongodb()
 
     # Find all notes, sort by creation time (newest first)
-    notes = await mongodb.notes.find().sort("created_at", -1).to_list(length=limit)
+    notes = await mongodb.notes \
+        .find() \
+        .sort("created_at", -1) \
+        .to_list(length=limit)
 
     for note in notes:
         note["_id"] = str(note["_id"])
 
     return notes
+
 
 @app.get("/notes/{note_id}", response_model=NoteOut)
 async def get_note(
@@ -198,23 +229,28 @@ async def get_note(
 
     # Try cache first (unless bypassed)
     if not bypass_cache:
-        cached_note = await cache_get(f"note:{note_id}")
+        cached_note = await cache_get(f"note: {note_id}")
         if cached_note:
             elapsed = time.time() - start_time
-            print(f"Cache hit for note:{note_id} {elapsed:.2f}ms")
+            print(f"Cache hit for note: {note_id} {elapsed: .2f}ms")
             # Converting ISO string back to datetime for response
-            cached_note["created_at"] = datetime.fromisoformat(cached_note["created_at"])
+            cached_note["created_at"] = \
+                datetime.fromisoformat(cached_note["created_at"])
             return cached_note
 
     # Validate ObjectId format
     if not ObjectId.is_valid(note_id):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid note ID")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid note ID")
 
     mongodb = get_mongodb()
     note = await mongodb.notes.find_one({"_id": ObjectId(note_id)})
 
     if not note:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Note not found")
 
     note["_id"] = str(note["_id"])
 
@@ -223,17 +259,20 @@ async def get_note(
     cache_note["created_at"] = note["created_at"].isoformat()
 
     # Store in cache for future requests
-    await cache_set(f"note:{note_id}", cache_note)
+    await cache_set(f"note: {note_id}", cache_note)
 
     elapsed = time.time() - start_time
-    print(f"Cache miss for note:{note_id} {elapsed:.2f}ms")
+    print(f"Cache miss for note: {note_id} {elapsed: .2f}ms")
 
     return note
+
 
 @app.put("/notes/{note_id}", response_model=NoteOut)
 async def update_note(note_id: str, note_update: NoteUpdate):
     if not ObjectId(note_id):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid note ID")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid note ID")
 
     db = get_mongodb()
 
@@ -241,7 +280,9 @@ async def update_note(note_id: str, note_update: NoteUpdate):
     update_data = note_update.model_dump(exclude_unset=True)
 
     if not update_data:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update")
 
     # Update the note
     result = await db.notes.update_one(
@@ -250,30 +291,41 @@ async def update_note(note_id: str, note_update: NoteUpdate):
     )
 
     if result.matched_count == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Note not found")
 
     # Invalidate cache (CRITICAL!)
-    await cache_delete(f"note:{note_id}")
+    await cache_delete(f"note: {note_id}")
 
     # Retrieve and return updated note
     updated_note = await db.notes.find_one({"_id": ObjectId(note_id)})
     updated_note["_id"] = str(updated_note["_id"])
     return updated_note
 
-@app.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
+
+@app.delete(
+    "/notes/{note_id}",
+    status_code=status.HTTP_204_NO_CONTENT)
 async def delete_note(note_id: str):
     # Validate ObjectId format
     if not ObjectId(note_id):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid note ID")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid note ID"
+        )
 
     mongodb = get_mongodb()
     result = await mongodb.notes.delete_one({"_id": ObjectId(note_id)})
 
     if result.deleted_count == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Note not found"
+        )
 
     # Invalidate cache (CRITICAL!)
-    await cache_delete(f"note:{note_id}")
+    await cache_delete(f"note: {note_id}")
 
     # Delete from Elasticsearch
     es = get_elasticsearch()
@@ -283,6 +335,7 @@ async def delete_note(note_id: str):
         print(f"Error deleting note from Elasticsearch: {e}")
 
     return None
+
 
 @app.get("/cache/stats")
 async def cache_stats():
@@ -296,7 +349,8 @@ async def cache_stats():
     keyspace_misses = info.get("keyspace_misses", 0)
 
     total_requests = keyspace_hits + keyspace_misses
-    hit_rate = (keyspace_hits / total_requests * 100) if total_requests > 0 else 0
+    hit_rate = (keyspace_hits / total_requests * 100) \
+        if total_requests > 0 else 0
 
     return {
         "total_commands": total_commands,
@@ -305,11 +359,18 @@ async def cache_stats():
         "hit_rate_percent": round(hit_rate, 2)
     }
 
-@app.delete("/cache/notes", status_code=status.HTTP_204_NO_CONTENT)
+
+@app.delete(
+    "/cache/notes",
+    status_code=status.HTTP_204_NO_CONTENT)
 async def clear_cache(admin: User = Depends(require_admin)):
     await cache_delete_pattern("note:*")
 
-@app.get("/search", response_model=list[SearchResult], status_code=status.HTTP_200_OK)
+
+@app.get(
+    "/search",
+    response_model=list[SearchResult],
+    status_code=status.HTTP_200_OK)
 async def search_notes(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(default=10, le=100)
@@ -355,7 +416,11 @@ async def search_notes(
 
     return results
 
-@app.post("/auth/signup", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+
+@app.post(
+    "/auth/signup",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED)
 def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     # Check if email or username already exists
     existing_user = db.query(User).filter(
@@ -388,6 +453,7 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)    # Reload from database (get the ID)
 
     return new_user
+
 
 @app.post("/auth/login", response_model=Token)
 async def login(
@@ -423,6 +489,7 @@ async def login(
 
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 @app.get("/profile", response_model=UserOut)
 async def get_profile(current_user: User = Depends(get_current_user)):
     # Automatic logging: log profile view
@@ -436,8 +503,12 @@ async def get_profile(current_user: User = Depends(get_current_user)):
 
     return current_user
 
+
 # READ: Get all users
-@app.get("/users", response_model=list[UserOut], status_code=status.HTTP_200_OK)
+@app.get(
+    "/users",
+    response_model=list[UserOut],
+    status_code=status.HTTP_200_OK)
 async def get_users(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -453,6 +524,7 @@ async def get_users(
 
     return db.query(User).order_by(User.id.asc()).all()
 
+
 # READ: Get single user by ID
 @app.get("/users/{user_id}", response_model=UserOut)
 def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -465,6 +537,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
     return user
 
+
 # UPDATE: Modify existing user
 @app.put("/users/{user_id}", response_model=UserOut)
 def update_user(
@@ -473,7 +546,7 @@ def update_user(
     db: Session = Depends(get_db)
 ):
     # Get existing user
-    user  = db.get(User, user_id)
+    user = db.get(User, user_id)
 
     if not user:
         raise HTTPException(
@@ -504,8 +577,11 @@ def update_user(
 
     return user
 
+
 # DELETE: Remove a user
-@app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     user_id: int,
     admin: User = Depends(require_admin),
@@ -530,7 +606,11 @@ def delete_user(
 
     return None
 
-@app.post("/logs", response_model=dict, status_code=status.HTTP_202_ACCEPTED)
+
+@app.post(
+    "/logs",
+    response_model=dict,
+    status_code=status.HTTP_202_ACCEPTED)
 async def create_log(
     log: LogEvent,
     current_user: User = Depends(get_current_user)
@@ -552,7 +632,11 @@ async def create_log(
             detail=f"Failed to publish log event: {str(e)}"
         )
 
-@app.get("/logs", response_model=list[LogEvent], status_code=status.HTTP_200_OK)
+
+@app.get(
+    "/logs",
+    response_model=list[LogEvent],
+    status_code=status.HTTP_200_OK)
 async def get_logs(
     current_user: User = Depends(get_current_user),
     limit: int = 10
@@ -570,7 +654,11 @@ async def get_logs(
 
     return logs
 
-@app.get("/users/{user_id}/logs", response_model=list[LogEvent], status_code=status.HTTP_200_OK)
+
+@app.get(
+    "/users/{user_id}/logs",
+    response_model=list[LogEvent],
+    status_code=status.HTTP_200_OK)
 async def get_user_logs(
     user_id: int,
     admin: User = Depends(require_admin),
@@ -597,6 +685,7 @@ async def get_user_logs(
         logs["_id"] = str(log["_id"])
 
     return logs
+
 
 @app.get("/logs/stats")
 async def get_stats():

@@ -9,6 +9,7 @@ ELASTICSEARCH_INDEX = os.getenv("ELASTICSEARCH_INDEX", "notes")
 
 es_client: AsyncElasticsearch = None
 
+
 async def connect_to_elasticsearch():
     global es_client
     es_client = AsyncElasticsearch([ELASTICSEARCH_URL])
@@ -34,11 +35,13 @@ async def connect_to_elasticsearch():
         )
         print(f"Created Elasticsearch index: {ELASTICSEARCH_INDEX}")
 
+
 async def close_elasticsearch_connection():
     global es_client
     if es_client:
         await es_client.close()
         print("Closed Elasticsearch connection")
+
 
 def get_elasticsearch():
     return es_client

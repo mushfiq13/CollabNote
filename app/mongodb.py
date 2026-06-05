@@ -13,6 +13,7 @@ MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "my_db")
 mongodb_client: AsyncIOMotorClient = None
 mongodb_db = None
 
+
 async def connect_to_mongodb():
     global mongodb_client, mongodb_db
 
@@ -27,11 +28,13 @@ async def connect_to_mongodb():
     await mongodb_client.admin.command('ping')
     print(f"Connected to MongoDB: {MONGODB_DB_NAME}")
 
+
 async def close_mongodb_connection():
     global mongodb_client
     if mongodb_client:
         mongodb_client.close()
         print("✅ Closed MongoDB connection")
+
 
 def get_mongodb():
     return mongodb_db

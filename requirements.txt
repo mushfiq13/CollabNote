@@ -6,6 +6,8 @@ python-dotenv==1.0.1      # Load environment variables from .env
 requests==2.31.0          # For making HTTP requests in tests
 pytest==7.4.3             # Testing framework
 
+flake8==6.0.0              # Code style and linting
+
 SQLAlchemy==2.0.31        # ORM for database operations
 psycopg2-binary==2.9.10   # PostgreSQL database adapter for Python
 alembic==1.13.2           # Database migration tool

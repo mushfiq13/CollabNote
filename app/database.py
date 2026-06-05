@@ -7,9 +7,11 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+
 # Base class for all models
 class Base(DeclarativeBase):
     pass
+
 
 # Create database engine
 engine = create_engine(

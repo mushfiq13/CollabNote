@@ -10,6 +10,7 @@ CACHE_TTL = int(os.getenv("CACHE_TTL", 3600))
 
 redis_client: aioredis.Redis = None
 
+
 async def connect_to_redis():
     global redis_client
     redis_client = await aioredis.from_url(
@@ -21,14 +22,17 @@ async def connect_to_redis():
     await redis_client.ping()
     print("Connected to Redis")
 
+
 async def close_redis_connection():
     global redis_client
     if redis_client:
         await redis_client.close()
         print("Closed Redis connection")
 
+
 def get_redis():
     return redis_client
+
 
 async def cache_get(key: str):
     redis = get_redis()
@@ -37,13 +41,16 @@ async def cache_get(key: str):
         return json.loads(cached)
     return None
 
+
 async def cache_set(key: str, value: dict, ttl: int = CACHE_TTL):
     redis = get_redis()
     await redis.set(key, json.dumps(value), ex=ttl)
 
+
 async def cache_delete(key: str):
     redis = get_redis()
     await redis.delete(key)
+
 
 async def cache_delete_pattern(pattern: str):
     """Remove multiple keys by pattern (e.g., note:*)"""
