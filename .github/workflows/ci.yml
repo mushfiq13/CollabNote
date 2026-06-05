@@ -32,7 +32,7 @@ jobs:
       # Push ONLY built compose image
       - name: Tag and push image
         run: |
-          docker push app:fastapi1
-          docker push app:fastapi2
-          docker push app:consumer
-          docker push app:migration
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/app:fastapi1
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/app:fastapi2
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/app:consumer
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/app:migration
