@@ -32,5 +32,4 @@ jobs:
       # Push ONLY built compose image
       - name: Tag and push image
         run: |
-          docker tag fastapi1:latest user/app:latest
           docker push user/app:latest
