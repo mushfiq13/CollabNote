@@ -29,8 +29,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Push ONLY built compose image
-      - name: Tag and push image
+      - name: Tag images for Docker Hub
+        run: |
+          docker tag app:fastapi1  ${{ secrets.DOCKERHUB_USERNAME }}/app:fastapi1
+          docker tag app:fastapi2  ${{ secrets.DOCKERHUB_USERNAME }}/app:fastapi2
+          docker tag app:consumer  ${{ secrets.DOCKERHUB_USERNAME }}/app:consumer
+          docker tag app:migration ${{ secrets.DOCKERHUB_USERNAME }}/app:migration
+
+      - name: Push images
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/app:fastapi1
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/app:fastapi2
