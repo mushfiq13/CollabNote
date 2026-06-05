@@ -28,6 +28,7 @@ services:
         COPY app/ ./app/
         CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     container_name: fastapi1
+    image: user/app:fastapi1
     env_file:
       - .env
     environment:
@@ -50,6 +51,7 @@ services:
         COPY app/ ./app/
         CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     container_name: fastapi2
+    image: user/app:fastapi2
     env_file:
       - .env
     environment:
@@ -195,6 +197,7 @@ services:
         COPY . .
         CMD ["python", "-m", "consumer.consumer"]
     container_name: consumer
+    image: user/app:consumer
     env_file:
       - .env
     environment:
@@ -218,6 +221,8 @@ services:
         RUN pip install --no-cache-dir -r requirements.txt
         COPY . .
     command: sh -c "alembic upgrade head"
+    container_name: migration
+    image: user/app:migration
     env_file:
       - .env
     depends_on:

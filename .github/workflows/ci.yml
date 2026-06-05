@@ -32,4 +32,7 @@ jobs:
       # Push ONLY built compose image
       - name: Tag and push image
         run: |
-          docker push user/app:latest
+          docker push user/app:fastapi1
+          docker push user/app:fastapi2
+          docker push user/app:consumer
+          docker push user/app:migration
