@@ -39,9 +39,9 @@ acceptance criteria:
 
 # Setup Instructions
 
-## Configure environment variables [Required]
+## Configure environment variables
 
-Copy `.env.example` to `.env` and fill in your values.
+Update `.env` file based on your preferences.
 
 ## Run via Docker
 
@@ -74,74 +74,14 @@ uvicorn app.main:app --reload
 The API will be available at `http://localhost:80`. Interactive docs:
 `http://localhost:80/docs`
 
-# API Endpoints
+# Deployment Requirements
 
-## Root & Health
+Add the followings into the Github Actions:
 
-| Method | Path      | Description   |
-| ------ | --------- | ------------- |
-| GET    | `/`       | Root endpoint |
-| GET    | `/health` | Health check  |
-| GET    | `/ping`   | Ping service  |
+1. `DOCKERHUB_USERNAME`
+1. `DOCKERHUB_TOKEN`
 
-## Authentication
-
-| Method | Path           | Description                   |
-| ------ | -------------- | ----------------------------- |
-| POST   | `/auth/signup` | Register a new user           |
-| POST   | `/auth/login`  | Login and receive a JWT token |
-
-## Profile
-
-| Method | Path       | Description      |
-| ------ | ---------- | ---------------- |
-| GET    | `/profile` | Get user profile |
-
-## Users
-
-| Method | Path               | Description    |
-| ------ | ------------------ | -------------- |
-| GET    | `/users`           | Get all users  |
-| GET    | `/users/{user_id}` | Get user by ID |
-| PUT    | `/users/{user_id}` | Update user    |
-| DELETE | `/users/{user_id}` | Delete user    |
-
-## Notes
-
-| Method | Path               | Description    |
-| ------ | ------------------ | -------------- |
-| POST   | `/notes`           | Create note    |
-| GET    | `/notes`           | Get all notes  |
-| GET    | `/notes/{note_id}` | Get note by ID |
-| PUT    | `/notes/{note_id}` | Update note    |
-| DELETE | `/notes/{note_id}` | Delete note    |
-
-## Search
-
-| Method | Path      | Description  |
-| ------ | --------- | ------------ |
-| GET    | `/search` | Search notes |
-
-## Cache
-
-| Method | Path           | Description      |
-| ------ | -------------- | ---------------- |
-| GET    | `/cache/stats` | Cache statistics |
-| DELETE | `/cache/notes` | Clear cache      |
-
-## Users (Admin)
-
-| Method | Path                    | Description   |
-| ------ | ----------------------- | ------------- |
-| GET    | `/users/{user_id}/logs` | Get user logs |
-
-## Logs
-
-| Method | Path          | Description             |
-| ------ | ------------- | ----------------------- |
-| POST   | `/logs`       | Create log event        |
-| GET    | `/logs`       | Get logs (latest first) |
-| GET    | `/logs/stats` | Get log statistics      |
+These are required to push the image into Docker Hub.
 
 # Authentication Flow
 
