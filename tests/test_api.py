@@ -2,50 +2,60 @@ import requests
 
 BASE_URL = "http://localhost:80"
 
-# Create a user
-response = requests.post(
-    f"{BASE_URL}/auth/signup",
-    json={"email": "charlie@example.com", "username": "charlie", "password": "password123"}
-)
-print(f"CREATE: {response.status_code}")
-print(response.json())
 
-# Login
-response = requests.post(
-    f"{BASE_URL}/auth/login",
-    data={"username": "charlie", "password": "password123", "grant_type": "password"}
-)
-print(f"LOGIN: {response.status_code}")
-print(response.json())
+def test_create_user():
+    response = requests.post(
+        f"{BASE_URL}/auth/signup",
+        json={"email": "charlie@example.com", "username": "charlie", "password": "password123"}
+    )
 
-access_token = response.json().get("access_token")
-token_type = response.json().get("token_type")
-headers = {"Authorization": f"{token_type} {access_token}"} if access_token else {}
+    assert response.status_code in [200, 201, 400]
 
-# Get profile
-response = requests.get(f'{BASE_URL}/profile', headers=headers)
-print(response.json())
-user_id = response.json()["id"]
 
-# Read all users
-response = requests.get(f'{BASE_URL}/users', headers=headers)
-print(f"\nREAD ALL: {response.status_code}")
-print(response.json())
+def test_login():
+    response = requests.post(
+        f"{BASE_URL}/auth/login",
+        data={"username": "charlie", "password": "password123", "grant_type": "password"}
+    )
 
-# Read single user
-response = requests.get(f'{BASE_URL}/users/{user_id}', headers=headers)
-print(f"\nREAD ONE: {response.status_code}")
-print(response.json())
+    assert response.status_code == 200
 
-# UPDATE user
-response = requests.put(
-    f"{BASE_URL}/users/{user_id}",
-    json={"email": "charlie.new@example.com"},
-    headers=headers
-)
-print(f"\nUPDATE: {response.status_code}")
-print(response.json())
+    data = response.json()
+    access_token = data.get("access_token")
+    token_type = data.get("token_type")
 
-# DELETE user
-response = requests.delete(f"{BASE_URL}/users/{user_id}", headers=headers)
-print(f"\nDELETE: {response.status_code}")
+    global headers
+    headers = {"Authorization": f"{token_type} {access_token}"} if access_token else {}
+
+
+def test_profile():
+    response = requests.get(f"{BASE_URL}/profile", headers=headers)
+
+    assert response.status_code == 200
+
+    global user_id
+    user_id = response.json()["id"]
+
+
+def test_read_all_users():
+    response = requests.get(f"{BASE_URL}/users", headers=headers)
+    assert response.status_code == 200
+
+
+def test_read_single_user():
+    response = requests.get(f"{BASE_URL}/users/{user_id}", headers=headers)
+    assert response.status_code == 200
+
+
+def test_update_user():
+    response = requests.put(
+        f"{BASE_URL}/users/{user_id}",
+        json={"email": "charlie.new@example.com"},
+        headers=headers
+    )
+    assert response.status_code == 200
+
+
+def test_delete_user():
+    response = requests.delete(f"{BASE_URL}/users/{user_id}", headers=headers)
+    assert response.status_code in [200, 403]
