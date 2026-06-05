@@ -58,4 +58,4 @@ def test_update_user():
 
 def test_delete_user():
     response = requests.delete(f"{BASE_URL}/users/{user_id}", headers=headers)
-    assert response.status_code in [200, 403]
+    assert response.status_code in [200, 401]
